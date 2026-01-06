@@ -14,5 +14,14 @@ hooks-notifications = "amplifier_module_hooks_notifications:mount"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+package = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["amplifier_module_hooks_notifications"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.uv.sources]
+amplifier-core = { git = "https://github.com/microsoft/amplifier-core", branch = "main" }

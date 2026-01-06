@@ -43,27 +43,25 @@ export NTFY_TOPIC="your-unique-topic"
 
 ### 2. Install Hook Module
 
-**Option A: From local directory**
+**Local Development:**
 ```bash
 cd hooks-notifications
 pip install -e .
 ```
 
-**Option B: From git repository (after publishing)**
+**Or from GitHub (after publishing):**
 ```bash
-# Will be available once pushed to GitHub
 pip install git+https://github.com/yourusername/amplifier-hooks-notifications
 ```
 
-### 3. Configure Globally
+### 3. Configure in Settings
 
-Add to `~/.amplifier/settings.yaml`:
+**After pip install, add to `~/.amplifier/settings.yaml`:**
 
 ```yaml
 modules:
   hooks:
-    - module: hooks-notifications
-      source: /path/to/hooks-notifications  # Or git URL after publishing
+    - module: hooks-notifications  # No source field needed after pip install
       config:
         notify_script: "notify"  # Or full path: "/Users/you/bin/notify"
         enabled_events:
@@ -73,6 +71,22 @@ modules:
 ```
 
 **That's it!** Every Amplifier session will now send notifications, regardless of bundle.
+
+**Alternative: Include source for auto-install** (useful when sharing config):
+```yaml
+modules:
+  hooks:
+    - module: hooks-notifications
+      source: git+https://github.com/yourusername/amplifier-hooks-notifications
+      config:
+        notify_script: "notify"
+        enabled_events:
+          - "tool:error"
+          - "session:end"
+        notify_on_ask_user: true
+```
+
+The `source:` field triggers auto-installation if the module isn't already available. For local development, omit it after pip install.
 
 ### 4. Install ntfy App
 
@@ -156,7 +170,6 @@ powershell -Command "New-BurntToastNotification -Text '$2', '$1'"
 modules:
   hooks:
     - module: hooks-notifications
-      source: ./hooks-notifications
 ```
 
 Uses defaults:
@@ -170,7 +183,6 @@ Uses defaults:
 modules:
   hooks:
     - module: hooks-notifications
-      source: ./hooks-notifications
       config:
         notify_script: "/usr/local/bin/notify"
         enabled_events:
@@ -187,10 +199,11 @@ modules:
 modules:
   hooks:
     - module: hooks-notifications
-      source: ./hooks-notifications
       config:
         notify_script: "/Users/robotdad/bin/my-custom-notify"
 ```
+
+**Note:** These examples assume the module is already pip-installed. Add `source: git+https://github.com/...` if you want auto-installation behavior.
 
 ## Testing
 
