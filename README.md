@@ -49,44 +49,83 @@ cd hooks-notifications
 pip install -e .
 ```
 
-**Or from GitHub (after publishing):**
+**Or from GitHub:**
 ```bash
-pip install git+https://github.com/yourusername/amplifier-hooks-notifications
+pip install git+https://github.com/robotdad/amplifier-hooks-notifications
 ```
 
-### 3. Configure in Settings
+### 3. Configure in Your Bundle
 
-**After pip install, add to `~/.amplifier/settings.yaml`:**
+**Create or edit your `.amplifier/bundle.md`:**
 
+```markdown
+---
+bundle:
+  name: my-bundle-with-notifications
+  version: 1.0.0
+  description: My bundle with push notifications
+
+includes:
+  - bundle: foundation
+
+hooks:
+  - module: hooks-notifications
+    source: git+https://github.com/robotdad/amplifier-hooks-notifications
+    config:
+      notify_script: "notify"  # Or full path: "/Users/you/bin/notify"
+      enabled_events:
+        - "tool:error"
+        - "session:end"
+      notify_on_ask_user: true
+---
+
+# Your System Instructions
+
+You are a helpful assistant with push notifications enabled.
+```
+
+**That's it!** Sessions using this bundle will now send notifications.
+
+**For local development** (after `pip install -e .`), you can omit the `source:` field:
 ```yaml
-modules:
-  hooks:
-    - module: hooks-notifications  # No source field needed after pip install
-      config:
-        notify_script: "notify"  # Or full path: "/Users/you/bin/notify"
-        enabled_events:
-          - "tool:error"
-          - "session:end"
-        notify_on_ask_user: true
+hooks:
+  - module: hooks-notifications
+    config:
+      notify_script: "notify"
+      enabled_events:
+        - "tool:error"
+        - "session:end"
+      notify_on_ask_user: true
 ```
 
-**That's it!** Every Amplifier session will now send notifications, regardless of bundle.
+The `source:` field triggers auto-installation from GitHub when the module isn't already available.
 
-**Alternative: Include source for auto-install** (useful when sharing config):
+**Or use a behavior** (recommended for reusability):
+
+Create `behaviors/notifications.yaml` in your bundle:
 ```yaml
-modules:
-  hooks:
-    - module: hooks-notifications
-      source: git+https://github.com/yourusername/amplifier-hooks-notifications
-      config:
-        notify_script: "notify"
-        enabled_events:
-          - "tool:error"
-          - "session:end"
-        notify_on_ask_user: true
+bundle:
+  name: behavior-notifications
+  version: 1.0.0
+  description: Push notifications for key events
+
+hooks:
+  - module: hooks-notifications
+    source: git+https://github.com/robotdad/amplifier-hooks-notifications
+    config:
+      notify_script: "notify"
+      enabled_events:
+        - "tool:error"
+        - "session:end"
+      notify_on_ask_user: true
 ```
 
-The `source:` field triggers auto-installation if the module isn't already available. For local development, omit it after pip install.
+Then include it in your main bundle:
+```yaml
+includes:
+  - bundle: foundation
+  - bundle: my-bundle:behaviors/notifications
+```
 
 ### 4. Install ntfy App
 
@@ -98,20 +137,24 @@ Open app, tap **+**, enter your topic name.
 
 ## Configuration Options
 
+In your bundle's `hooks:` section:
+
 ```yaml
-config:
-  # Path or command name for notification script
-  notify_script: "notify"  # Default: "notify" (must be in PATH)
-  
-  # Events that trigger notifications
-  enabled_events:
-    - "tool:error"      # Tool execution fails
-    - "session:end"     # Session completes
-    - "session:start"   # Session begins (optional)
-    - "prompt:submit"   # User submits prompt (optional)
-  
-  # Notify when Amplifier asks for user input
-  notify_on_ask_user: true  # Default: true
+hooks:
+  - module: hooks-notifications
+    config:
+      # Path or command name for notification script
+      notify_script: "notify"  # Default: "notify" (must be in PATH)
+      
+      # Events that trigger notifications
+      enabled_events:
+        - "tool:error"      # Tool execution fails
+        - "session:end"     # Session completes
+        - "session:start"   # Session begins (optional)
+        - "prompt:submit"   # User submits prompt (optional)
+      
+      # Notify when Amplifier asks for user input
+      notify_on_ask_user: true  # Default: true
 ```
 
 ### Available Events
@@ -167,9 +210,8 @@ powershell -Command "New-BurntToastNotification -Text '$2', '$1'"
 ### Minimal Config (Errors + Completions Only)
 
 ```yaml
-modules:
-  hooks:
-    - module: hooks-notifications
+hooks:
+  - module: hooks-notifications
 ```
 
 Uses defaults:
@@ -180,30 +222,28 @@ Uses defaults:
 ### Verbose Config (All Events)
 
 ```yaml
-modules:
-  hooks:
-    - module: hooks-notifications
-      config:
-        notify_script: "/usr/local/bin/notify"
-        enabled_events:
-          - "tool:error"
-          - "session:start"
-          - "session:end"
-          - "prompt:submit"
-        notify_on_ask_user: true
+hooks:
+  - module: hooks-notifications
+    config:
+      notify_script: "/usr/local/bin/notify"
+      enabled_events:
+        - "tool:error"
+        - "session:start"
+        - "session:end"
+        - "prompt:submit"
+      notify_on_ask_user: true
 ```
 
 ### Custom Script Path
 
 ```yaml
-modules:
-  hooks:
-    - module: hooks-notifications
-      config:
-        notify_script: "/Users/robotdad/bin/my-custom-notify"
+hooks:
+  - module: hooks-notifications
+    config:
+      notify_script: "/Users/robotdad/bin/my-custom-notify"
 ```
 
-**Note:** These examples assume the module is already pip-installed. Add `source: git+https://github.com/...` if you want auto-installation behavior.
+**Note:** These are bundle configuration snippets. Add `source: git+https://github.com/robotdad/amplifier-hooks-notifications` if you want auto-installation behavior.
 
 ## Testing
 
@@ -278,11 +318,14 @@ amplifier --debug
 # Verify installation
 pip show amplifier-module-hooks-notifications
 
-# Check settings.yaml syntax
-cat ~/.amplifier/settings.yaml
+# Check bundle.md syntax
+cat .amplifier/bundle.md
 
-# Ensure source path is correct
-ls -la /path/to/hooks-notifications
+# Validate your bundle
+amplifier bundle validate .amplifier/bundle.md
+
+# Check if module is discoverable
+amplifier modules list | grep hooks-notifications
 ```
 
 ### Script not executable
