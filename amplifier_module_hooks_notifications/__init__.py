@@ -55,10 +55,19 @@ class NotificationHooks:
         
         elif event == "session:end":
             session_id = data.get("session_id", "unknown")
-            stats = data.get("stats", {})
-            if isinstance(stats, dict):
-                tool_count = stats.get("tool_invocations", 0)
-                return ("Session Complete", f"Session ended. {tool_count} tool calls executed.", "default")
+            
+            # Try to get the initial prompt to provide context
+            prompt = data.get("prompt", "")
+            if not prompt:
+                # Fallback: try to get it from parent_prompt or initial_prompt
+                prompt = data.get("parent_prompt", data.get("initial_prompt", ""))
+            
+            if prompt:
+                # Truncate prompt to ~60 chars for notification
+                preview = prompt[:60] + "..." if len(prompt) > 60 else prompt
+                return ("Session Complete", f"Re: {preview}", "default")
+            
+            # Fallback if no prompt available
             return ("Session Complete", f"Session {session_id[:8]} ended", "default")
         
         elif event == "session:start":
