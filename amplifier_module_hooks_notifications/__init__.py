@@ -19,9 +19,14 @@ class NotificationHooks:
             "session:end",
         ])
         self.notify_on_ask = config.get("notify_on_ask_user", True)
+        self.initial_prompt = None  # Cache the initial prompt from session:start
     
     async def handle_event(self, event: str, data: dict[str, Any]) -> HookResult:
         """Handle any event and decide if we should notify."""
+        
+        # Always capture the initial prompt from session:start (even if not notifying on it)
+        if event == "session:start":
+            self.initial_prompt = data.get("prompt", "")
         
         # Check if this event type is enabled
         if event not in self.enabled_events:
@@ -54,21 +59,15 @@ class NotificationHooks:
             return ("Tool Error", f"{tool_name} failed: {error_msg}", "high")
         
         elif event == "session:end":
+            # Use the cached prompt from session:start
+            if self.initial_prompt:
+                # Truncate prompt to ~80 chars for notification body
+                preview = self.initial_prompt[:80] + "..." if len(self.initial_prompt) > 80 else self.initial_prompt
+                return ("Amplifier", preview, "default")
+            
+            # Fallback if no prompt was captured
             session_id = data.get("session_id", "unknown")
-            
-            # Try to get the initial prompt to provide context
-            prompt = data.get("prompt", "")
-            if not prompt:
-                # Fallback: try to get it from parent_prompt or initial_prompt
-                prompt = data.get("parent_prompt", data.get("initial_prompt", ""))
-            
-            if prompt:
-                # Truncate prompt to ~60 chars for notification
-                preview = prompt[:60] + "..." if len(prompt) > 60 else prompt
-                return ("Session Complete", f"Re: {preview}", "default")
-            
-            # Fallback if no prompt available
-            return ("Session Complete", f"Session {session_id[:8]} ended", "default")
+            return ("Amplifier", f"{session_id[:8]}", "default")
         
         elif event == "session:start":
             return ("Session Started", "New Amplifier session created", "default")
@@ -140,9 +139,21 @@ async def mount(coordinator: Any, config: dict[str, Any] | None = None) -> Calla
     # Get enabled events from config
     enabled_events = config.get("enabled_events", ["tool:error", "session:end"])
     
-    # Register handlers for each enabled event
+    # Always register session:start to capture the initial prompt (even if not in enabled_events)
     handlers = []
+    unregister = coordinator.hooks.register(
+        "session:start",
+        hooks.handle_event,
+        priority=90,
+        name="notify_capture_prompt"
+    )
+    handlers.append(unregister)
+    
+    # Register handlers for each enabled event
     for event in enabled_events:
+        if event == "session:start":
+            # Already registered above
+            continue
         unregister = coordinator.hooks.register(
             event,
             hooks.handle_event,
